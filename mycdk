@@ -1,0 +1,97 @@
+#!/usr/bin/env node
+
+const pkg = require('./package.json');
+const pkgconfig = pkg.config || {};
+const config = pkgconfig.cdkTool || {};
+const Table = require('cli-table3');
+
+function newTable() {
+  var table = new Table({head: ['accountId', 'accountAlias'], style: { head:[], border:[] } });
+  return table;
+}
+
+function confirm(accountId, accountAlias) {
+  const yesno = require('yesno');
+  var table = newTable();
+  table.push([accountId, accountAlias]);
+  const yes = yesno({
+    question: 
+`You will need to confirm to operate on this account.
+${table.toString()}
+Please confirm account infomation before executing.
+Are you sure you want to continue? ([y]es/[n]o)`,
+    defaultValue: null,
+  })
+  return yes
+}
+
+async function getAwsInfo() {
+  const aws = require('aws-sdk');
+  let accountId, accountAlias;
+  {
+    const sts = new aws.STS();
+    const data = await sts.getCallerIdentity({}).promise();
+    accountId = data.Account;
+  }
+  {
+    const iam = new aws.IAM();
+    const data = await iam.listAccountAliases({}).promise();
+    accountAlias = data.AccountAliases[0];
+  }
+  return [accountId, accountAlias];
+}
+
+async function printAwsInfo() {
+  var table = newTable();
+  table.push(await getAwsInfo());
+  console.log(table.toString());
+}
+
+async function main() {
+  if (process.argv.includes("--cdktool-debug")) {
+    console.log(process.argv);
+    await printAwsInfo();
+  }
+  if (region = config.awsDefaultRegion) {
+    process.env.AWS_DEFAULT_REGION=region;
+  }
+
+  process.argv.splice(0, 2)
+  const confirmCommands = config.askCommands || ["deploy"];
+  const command = process.argv[0]
+  if (confirmCommands.includes(command)) {
+    console.log("checking environment...")
+    const [accountId, accountAlias] = await getAwsInfo();
+    const skipConfirmAwsIds = config.skipAskAwsIds;
+    const skipConfirmAwsAliases = config.skipAskAwsAliases;
+    const isSkipConfirm = !(skipConfirmAwsIds.includes(accountId) || skipConfirmAwsAliases.includes(accountAlias));
+    if (isSkipConfirm) {
+      if (!await confirm(accountId, accountAlias)) {
+        return
+      }
+    } else {
+      await printAwsInfo();
+    }
+  }
+  const argv = process.argv
+
+  if (command == "deploy") {
+    const exportName = config.notificationArnExportName;
+    if (exportName) {
+      const stackName = exportName.split(":")[0];
+      const aws = require('aws-sdk');
+      const cfn = new aws.CloudFormation({region: process.env.AWS_DEFAULT_REGION});
+      const stackInfo = await cfn.describeStacks({StackName: stackName}).promise();
+      const output = stackInfo.Stacks[0].Outputs.filter((v) => v.ExportName == exportName)[0];
+      if (output) {
+        argv.push("--notification-arns", output.OutputValue);
+      }
+    }
+  }
+
+  const spawn = require('child_process').spawn;
+  spawn('cdk', argv, { stdio: 'inherit' })
+}
+
+main()
+

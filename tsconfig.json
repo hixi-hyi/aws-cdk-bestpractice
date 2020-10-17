@@ -17,7 +17,11 @@
     "inlineSources": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
-    "typeRoots": ["./node_modules/@types"]
+    "typeRoots": ["./node_modules/@types"],
+    "charset": "utf8",
+    "baseUrl": ".",
+    "paths": { "lib/*": ["lib/*"] },
+    "outDir": "./dist"
   },
-  "exclude": ["cdk.out"]
+  "exclude": ["cdk.out", "dist", "node_modules"]
 }
