@@ -1,7 +1,7 @@
 # AWS DevDay 2020 F-9 CDK 我流ベストプラクティスの紹介
 
 ## このリポジトリについて
-* AWS DevDay 2020 で発表した F-9 のセッションでの具体的な実装を書いたものになります
+* AWS DevDay 2020 で発表した [F-9 のセッション](https://speakerdeck.com/hixi/aws-dev-day-2020-f9-cdk-bestpractice)での具体的な実装を書いたものになります
 * このまま動くことを保証しているわけではありません (cdk build できる状態までの確認となってます)
 * 説明をしたほうがいい部分は //COMMENTED というコメントを残しています
 
